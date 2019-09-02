@@ -232,6 +232,31 @@ class auth_plugin_cas extends auth_plugin_ldap {
     }
 
     /**
+     * Sync roles for this user.
+     * (backported from pre-3.5 auth/ldap/auth.php)
+     *
+     * @param object $user The user to sync (without system magic quotes).
+     */
+    function sync_roles($user) {
+        $iscreator = $this->iscreator($user->username);
+        if ($iscreator === null) {
+            return; // Nothing to sync - creators not configured
+        }
+
+        if ($roles = get_archetype_roles('coursecreator')) {
+            $creatorrole = array_shift($roles);      // We can only use one, let's use the first one
+            $systemcontext = context_system::instance();
+
+            if ($iscreator) { // Following calls will not create duplicates
+                role_assign($creatorrole->id, $user->id, $systemcontext->id, $this->roleauth);
+            } else {
+                // Unassign only if previously assigned by this plugin!
+                role_unassign($creatorrole->id, $user->id, $systemcontext->id, $this->roleauth);
+            }
+        }
+    }
+
+    /**
      * Returns true if user should be coursecreator.
      *
      * @param mixed $username    username (without system magic quotes)
